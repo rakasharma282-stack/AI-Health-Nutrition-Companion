@@ -1,0 +1,266 @@
+// AI Health & Nutrition Companion - Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  PREMIUM
+  NUTRITIONIST
+  ADMIN
+}
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  name          String?
+  passwordHash  String?
+  image         String?
+  role          Role      @default(USER)
+  provider      String?   @default("credentials")
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  healthProfile HealthProfile?
+  mealLogs      MealLog[]
+  weightLogs    WeightLog[]
+  hydrationLogs HydrationLog[]
+  sleepLogs     SleepLog[]
+  moodLogs      MoodLog[]
+  exerciseLogs  ExerciseLog[]
+  mealPlans     MealPlan[]
+  recipes       Recipe[]
+  groceryLists  GroceryList[]
+  chatThreads   ChatThread[]
+
+  @@map("users")
+}
+
+model HealthProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dateOfBirth        DateTime?
+  gender             String?  // male/female/other
+  heightCm           Float?
+  weightKg           Float?
+  activityLevel      String?  // sedentary/light/moderate/active/very_active
+  dietType           String?  // vegetarian/vegan/keto/mediterranean/low-carb/balanced/jain
+  allergies          String?  // comma-separated
+  goal               String?  // lose/maintain/gain
+  targetWeightKg     Float?
+  bmr                Float?
+  dailyCalorieTarget Float?
+  proteinTarget      Float?
+  carbTarget         Float?
+  fatTarget          Float?
+  preferredCuisine   String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("health_profiles")
+}
+
+model FoodItem {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  brand               String?
+  barcode             String?  @unique
+  servingSize         Float
+  servingUnit         String   @default("g")
+  caloriesPerServing  Float
+  proteinPerServing   Float
+  carbsPerServing     Float
+  fatPerServing       Float
+  fiberPerServing     Float?
+  sugarPerServing     Float?
+  sodiumPerServing    Float?
+  cuisine             String?
+  dietTags            String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  mealLogs MealLog[]
+
+  @@map("food_items")
+  @@index([name])
+  @@index([barcode])
+}
+
+model MealLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  foodItemId  Int?
+  foodItem    FoodItem? @relation(fields: [foodItemId], references: [id], onDelete: SetNull)
+  photoUrl    String?
+  source      String   @default("search") // search/photo
+  mealType    String   // breakfast/lunch/dinner/snack
+  quantity    Float    @default(1)
+  date        DateTime @default(now())
+  name        String
+  calories    Float
+  protein     Float
+  carbs       Float
+  fat         Float
+  fiber       Float?
+  sugar       Float?
+  sodium      Float?
+  createdAt   DateTime @default(now())
+
+  @@map("meal_logs")
+  @@index([userId, date])
+}
+
+model WeightLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg  Float
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@map("weight_logs")
+  @@index([userId, date])
+}
+
+model HydrationLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amountMl  Float
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@map("hydration_logs")
+  @@index([userId, date])
+}
+
+model SleepLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hours     Float
+  quality   Int      @default(3) // 1-5
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@map("sleep_logs")
+  @@index([userId, date])
+}
+
+model MoodLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mood      Int      // 1-5
+  note      String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+
+  @@map("mood_logs")
+  @@index([userId, date])
+}
+
+model ExerciseLog {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type           String
+  durationMin    Float
+  caloriesBurned Float
+  intensity      String   @default("moderate") // light/moderate/vigorous
+  date           DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@map("exercise_logs")
+  @@index([userId, date])
+}
+
+model MealPlan {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planType  String   // daily/weekly
+  startDate DateTime
+  endDate   DateTime
+  content   Json
+  createdAt DateTime @default(now())
+
+  @@map("meal_plans")
+  @@index([userId, startDate])
+}
+
+model Recipe {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  title      String
+  content    Json
+  ingredients Json
+  nutrition  Json
+  servings   Int      @default(2)
+  createdAt  DateTime @default(now())
+
+  @@map("recipes")
+}
+
+model GroceryList {
+  id           Int      @id @default(autoincrement())
+  userId       Int
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  week         String   // e.g. "2026-W29"
+  items        Json     // [{name, qty, category, checked}]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("grocery_lists")
+  @@unique([userId, week])
+}
+
+model ChatThread {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("New Conversation")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  messages  ChatMessage[]
+
+  @@map("chat_threads")
+  @@index([userId])
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  threadId  Int
+  thread    ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  role      String   // user/assistant
+  content   String
+  createdAt DateTime @default(now())
+
+  @@map("chat_messages")
+  @@index([threadId])
+}
+
+model Article {
+  id        Int      @id @default(autoincrement())
+  category  String   // nutrition/fitness/sleep/stress/hydration/ayurveda
+  title     String
+  summary   String
+  content   String   @db.LongText
+  imageUrl  String?
+  author    String?
+  readTime  Int      @default(5)
+  createdAt DateTime @default(now())
+
+  @@map("articles")
+  @@index([category])
+}
